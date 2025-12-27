@@ -18,6 +18,33 @@ This page would require some updates.
 * <u>File locations:</u> The script is stored in {{Code|/usr/bin/systemcheck}} and {{Code|/usr/libexec/systemcheck/}}.
 * <u>Optional component:</u> {{project_name_long}} is functional without systemcheck.
 
+= Current Check Coverage (high level) =
+This summarizes which areas are covered by the current modules under {{Code|/usr/libexec/systemcheck/}}. Most functions only show messages on failure, with success output gated behind <code>--verbose</code> to keep the default UX quiet.
+
+* '''System readiness and environment'''
+** {{Code|check_system_ready}}: home directory and {{Code|/etc/skel}} sanity.
+** {{Code|check_environment_variables}}: requires {{Code|WHONIX=1}} or {{Code|KICKSECURE=1}}.
+** {{Code|check_apparmor}}: confirms AppArmor enforcement is active.
+** {{Code|check_privilege_escalation_tools}}: exercises {{Code|leaprun}}, {{Code|sudo}} and {{Code|pkexec}} for configuration drift.
+** {{Code|check_dpkg}}, {{Code|check_services}}, {{Code|check_journal}} and {{Code|check_logs}}: surface broken packages, failed systemd units or noisy journal entries.
+* '''Security posture'''
+** {{Code|check_login_security}}, {{Code|check_su_access}}, {{Code|check_secure_boot}}, {{Code|check_full_disk_encryption}}, {{Code|check_grub_security}}, {{Code|check_user_sysmaint_split}}, {{Code|check_tirdad_module}}: local hardening and physical security assumptions.
+** {{Code|check_non_freedom}}, {{Code|check_debian_eol}}: warns about non-free firmware (except whitelisted items) and unsupported Debian releases.
+* '''Platform and virtualization'''
+** {{Code|check_virtualizer}}, {{Code|check_pvclock}}, {{Code|check_timezone}}, {{Code|check_ip_forwarding_disabled}}: virtualizer identification plus clock source and forwarding sanity.
+** {{Code|check_qubes_settings}}, {{Code|check_qubes_update_proxy}}, {{Code|check_network_interfaces}}: Qubes-specific wiring and update proxy availability.
+* '''Tor and network path'''
+** {{Code|check_tor_enabled}}, {{Code|check_tor_config}}, {{Code|check_tor_running}}, {{Code|check_control_port_filter_running}}, {{Code|check_anondate_show}}: configuration and daemon health before network probes start.
+** {{Code|check_tor_socks_port_reachability}}, {{Code|check_tor_bootstrap}}, {{Code|check_tor_connectivity}}, {{Code|check_stream_isolation}}: Tor bootstrap, SocksPort/TransPort reachability and stream isolation validation.
+* '''Package hygiene and updates'''
+** {{Code|check_packages}}: meta-package presence and unwanted package scans.
+** {{Code|check_operating_system}}: <code>apt-get update</code> plus <code>apt-get dist-upgrade --simulate</code> over a dedicated APT SocksPort.
+** {{Code|check_apt_repository}}: derivative repository enabled/disabled status.
+* '''Additional checks'''
+** {{Code|show_versions}} and {{Code|show_deprecation_notice}}: build/package versions and major release support window (verbose output unless deprecated).
+** {{Code|check_warrant_canary}}: downloads and verifies the signed warrant canary (status is quiet unless verbose or failure).
+** {{Code|check_arg_max}}: debug helper for GUI argument length limits.
+
 = Security =
 When using <code>systemcheck</code> with the parameter <code>--leak-tests</code>, curl will verify the SSL certificate for downloads from <code>check.torproject.org</code> -- <code>SocksPort</code> Test, <code>TransPort</code> Test -- and abort if the certificate is not valid. The [https://packages.debian.org/source/stable/ca-certificates ca-certificates Debian package] is installed on {{project_name_short}}.
 
@@ -96,9 +123,11 @@ Other useful variables include:
 </div>
 For further examples, please inspect the behavior of other functions in the folder {{Code2|/usr/libexec/systemcheck/}}
 
-= Silent Mode =
+= Silent Mode and Verbosity =
+The default run sets {{Code|silent=0}} inside {{Code|preparation.bsh}}, meaning most success messages still appear but many tests only emit output when a warning/error is detected. The {{Code|silent}} level can be raised via configuration or wrappers if a quieter experience is desired (for example for autostarted runs).
+
 {| class="wikitable"
-|+ ''systemcheck Default Operation'' (outdated!)
+|+ ''systemcheck Default Operation''
 
 |-
 ! '''Category'''
@@ -139,10 +168,10 @@ For further examples, please inspect the behavior of other functions in the fold
 
 == Other Silent Mode Settings ==
 
-systemcheck was specifically made more silent to suit the Qubes AppVM design:
+systemcheck can be made more silent to suit the Qubes AppVM design or other automation by increasing {{Code|silent}} in configuration files or wrappers. Common profiles:
 
-* When autostarted (after boot): <code>silent=3</code>
-* Daemon mode (planned iteration during run): <code>silent=3</code>
+* Autostarted run suggestion: <code>silent=3</code>
+* Daemon-like periodic run suggestion: <code>silent=3</code>
 * Silent only applies to autostart and daemon mode. When it is manually run, all messages are shown. <ref>The same as {{project_name_short}} 11.</ref>
 
 {| class="wikitable"

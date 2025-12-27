@@ -95,18 +95,76 @@ ln -s /usr/share/applications/systemcheck.desktop ~/.config/autostart/systemchec
 
 = System Checks =
 
-In all the checks below, systemcheck warnings appear if a problem is detected. Conversely, systemcheck output is otherwise quiet unless using the <code>--verbose</code> option. Any operating system updates, downloads or other network activity are Tor stream-isolated by default.
+systemcheck runs a long list of checks, but it intentionally hides most "all good" messages to avoid overwhelming users. Errors and warnings are always displayed, while detailed success messages require <code>--verbose</code>. Any operating system updates, downloads or other network activity are Tor stream-isolated by default.
+
+== How systemcheck reports results ==
+
+The tables below group the current checks by how prominently they are shown during a manual run. Autostart runs use a more silent mode (for example on {{project_name_gateway_short}}) but still surface warnings and errors.
+
+=== Checks shown by default ===
 
 {| class="wikitable"
-|+ ''System Checks run by <code>systemcheck</code>''
+|+ ''Checks shown by default when manually running <code>systemcheck</code>''
 
 |-
+
 ! '''Check'''
 ! '''Description'''
 |-
 
-! Canary
-| An automated {{project_name_short}} warrant canary check is available with the <code>--verbose</code> parameter, see: [[#Warrant Canary Check|Warrant Canary Check]].
+! Tor
+| Check:
+* If Tor has been enabled by checking whether {{Code|DisableNetwork 1}} has been commented out from {{Code|/usr/local/etc/torrc.d/50_user.conf}} either manually or via setup-dist.
+* If the Tor process (pid) is running on {{project_name_gateway_short}}.
+* The validity of Tor configuration files in {{project_name_gateway_short}} (<code>{{project_name_gateway_vm}}</code>) by using {{Code|sudo tor --verify-config}}.
+Notify about the Tor connection and IP address. <ref>
+Some users may wonder why it is necessary to check the IP address if the {{project_name_short}} design ensures that the real IP cannot be leaked. Sometimes <code>check.torproject.org</code> reports false positives and fails to detect Tor exit nodes, so it is better to provide information about that possibility. This also reduces support requests and bad press. Users are welcome to investigate a Tor exit node that could not be detected, but it can be stated with high confidence that the IP address will be associated with a known Tor exit node.
+</ref> <ref>
+Another reason to perform this check is because some users set up dangerous and/or unsupported configurations, such as:
+
+* Using virtualizers which are entirely unsupported and untested by {{project_name_short}} developers.
+* Installing arbitrary packages on {{project_name_workstation_long}} (<code>{{project_name_workstation_template}}</code>). This could theoretically create leak vectors, and systemcheck is the last layer of defense against such issues.
+</ref>
+|-
+
+! Connectivity Tests
+| When using <code>--ip-test</code> (previously called, same as <code>--leak-tests</code>):
+
+# Download https://check.torproject.org with curl through an extra SocksPort.
+# Download https://check.torproject.org with curl through regular connection.
+
+Checks if <code>check.torproject.org</code> reports the IP to be a Tor IP address.
+|-
+
+! Stream Isolation (Whonix only)
+| When using <code>--ip-test</code> (previously called, same as <code>--leak-tests</code>):
+
+# Download https://check.torproject.org with curl through an extra SocksPort.
+# Download https://check.torproject.org with curl through regular connection.
+
+A stream isolation test checks that the IP addresses from (1) and (2) differ.
+|-
+
+! Tor Bootstrap
+| Tor Bootstrap Status:
+
+* TODO: document
+* anondate
+|-
+
+! Operating System Updates
+| ''apt update'' is run through a separate APT SocksPort for stream isolation. A notification is provided whether the system is up-to-date or requires updating.
+|}
+
+=== Checks run silently unless there is a problem ===
+
+{| class="wikitable"
+|+ ''Checks that only appear on failure (pass messages require <code>--verbose</code>)''
+
+|-
+
+! '''Check'''
+! '''Description'''
 |-
 
 ! Clock Source
@@ -133,15 +191,6 @@ This is only expected to affect those following the [[KVM]] instructions.
 | Whonix only: Check if IP forwarding is disabled on Whonix-Gateway.
 |-
 
-! Connectivity Tests
-| When using <code>--ip-test</code> (previously called, same as <code>--leak-tests</code>):
-
-# Download https://check.torproject.org with curl through an extra SocksPort.
-# Download https://check.torproject.org with curl through regular connection.
-
-Checks if <code>check.torproject.org</code> reports the IP to be a Tor IP address.
-|-
-
 ! Log Inspection
 | When using the <code>--verbose</code> option, check if {{Code|~/.msgcollector/msgdispatcher-error.log}} exists and report this if confirmed.
 |-
@@ -154,48 +203,17 @@ Checks if <code>check.torproject.org</code> reports the IP to be a Tor IP addres
 | Check that setup-dist has properly configured networking.
 |-
 
-! Operating System Updates
-| ''apt update'' is run through a separate APT SocksPort for stream isolation. A notification is provided whether the system is up-to-date or requires updating.
-|-
-
 ! Package Manager
 | Check if a package manager is currently running and wait until the process is finished. <ref>
 Otherwise, the system might become locked or the package manager might be left in a broken state. Advice is provided on what to do in such circumstances.</ref> This prevents connection failures during concurrent upgrades of the Tor package.
-|-
-
-! Tor
-| Check:
-* If Tor has been enabled by checking whether {{Code|DisableNetwork 1}} has been commented out from {{Code|/usr/local/etc/torrc.d/50_user.conf}} either manually or via setup-dist.
-* If the Tor process (pid) is running on {{project_name_gateway_short}}.
-* The validity of Tor configuration files in {{project_name_gateway_short}} (<code>{{project_name_gateway_vm}}</code>) by using {{Code|sudo tor --verify-config}}.
-Notify about the Tor connection and IP address. <ref>
-Some users may wonder why it is necessary to check the IP address if the {{project_name_short}} design ensures that the real IP cannot be leaked. Sometimes <code>check.torproject.org</code> reports false positives and fails to detect Tor exit nodes, so it is better to provide information about that possibility. This also reduces support requests and bad press. Users are welcome to investigate a Tor exit node that could not be detected, but it can be stated with high confidence that the IP address will be associated with a known Tor exit node.
-</ref> <ref>
-Another reason to perform this check is because some users set up dangerous and/or unsupported configurations, such as:
-
-* Using virtualizers which are entirely unsupported and untested by {{project_name_short}} developers.
-* Installing arbitrary packages on {{project_name_workstation_long}} (<code>{{project_name_workstation_template}}</code>). This could theoretically create leak vectors, and systemcheck is the last layer of defense against such issues.
-</ref>
 |-
 
 ! Repository Notification
 | Notifies whether [[Project-APT-Repository|Derivative APT Repository]] is enabled or not.
 |-
 
-! Stream Isolation (Whonix only)
-| When using <code>--ip-test</code> (previously called, same as <code>--leak-tests</code>):
-
-# Download https://check.torproject.org with curl through an extra SocksPort.
-# Download https://check.torproject.org with curl through regular connection.
-
-A stream isolation test checks that the IP addresses from (1) and (2) differ.
-|-
-
-! Tor Bootstrap
-| Tor Bootstrap Status:
-
-* TODO: document
-* anondate
+! Virtualization Platform
+| Check {{project_name_short}} is being run on one of the supported virtualizer platforms, including [[VirtualBox]], [[KVM]] or [[Qubes]].
 |-
 
 ! Miscellaneous
@@ -206,10 +224,21 @@ A stream isolation test checks that the IP addresses from (1) and (2) differ.
 * remarkable kernel messages
 * timedatectl check
 * timezone
+|}
+
+=== Checks visible only with <code>--verbose</code> ===
+
+{| class="wikitable"
+|+ ''Checks that stay quiet unless <code>--verbose</code> is used (errors still appear)''
+
 |-
 
-! Virtualization Platform
-| Check {{project_name_short}} is being run on one of the supported virtualizer platforms, including [[VirtualBox]], [[KVM]] or [[Qubes]].
+! '''Check'''
+! '''Description'''
+|-
+
+! Canary
+| An automated {{project_name_short}} warrant canary check is available with the <code>--verbose</code> parameter, see: [[#Warrant Canary Check|Warrant Canary Check]].
 |-
 
 ! su access check
@@ -231,8 +260,6 @@ See also: https://www.kicksecure.com/wiki/Dev/Strong_Linux_User_Account_Isolatio
 
 ! Physical Security Check
 | See [[Systemcheck#Physical_Security_Check|Physical Security Check]].
-|-
-
 |}
 
 = Update Notifications by updatecheck =
