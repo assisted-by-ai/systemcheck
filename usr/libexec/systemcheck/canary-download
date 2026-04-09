@@ -30,8 +30,16 @@ os.environ['TZ'] = 'UTC'
 time.tzset()
 
 
+_signify_process = None
+
 def canary_download_signal_handler(sig, frame):
     print("canary_download_signal_handler")
+    if _signify_process is not None:
+        try:
+            _signify_process.kill()
+            _signify_process.wait()
+        except OSError:
+            pass
     sys.exit(128 + sig)
 
 
@@ -120,11 +128,14 @@ def main():
     # Avoid Popen shell=True.
     signify_openbsd_cmd = shlex.split(signify_openbsd_cmd)
 
+    global _signify_process
+
     process = subprocess.Popen(
         signify_openbsd_cmd,
         stdout=PIPE,
         stderr=PIPE
     )
+    _signify_process = process
 
     try:
         process.wait(timeout_seconds)
@@ -132,12 +143,14 @@ def main():
         msg = "canary signify-openbsd verification timeout."
         print(msg, file=sys.stderr)
         process.kill()
+        process.wait()
         sys.exit(6)
     except BaseException:
         error_message = traceback.format_exc()
         msg = "canary signify-openbsd unknown error. Traceback:\n" + error_message
         print(msg, file=sys.stderr)
         process.kill()
+        process.wait()
         sys.exit(7)
 
     stdout, stderr = process.communicate(timeout=2)
