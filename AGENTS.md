@@ -9,7 +9,10 @@ It runs a series of diagnostic functions and reports results via CLI and GUI (ms
 
 - Shell scripts in `usr/libexec/systemcheck/` are sourced by the main `systemcheck` script.
 - `preparation.bsh` is sourced first and provides shared helpers.
-- `canary-download` is a standalone Python script that runs as user `canary` under AppArmor confinement.
+- `updatecheck` is a related tool that checks for available package updates.
+- The `canary` system (including the `canary-download` Python script) fetches and
+  verifies Kicksecure's warrant canary. It runs as user `canary` under AppArmor
+  confinement.
 - `log-checker` is a standalone bash script invoked via `leaprun` (privilege escalation wrapper).
 - Configuration is sourced from `/etc/systemcheck.d/*.conf` and `/usr/local/etc/systemcheck.d/*.conf`.
 

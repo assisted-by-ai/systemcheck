@@ -43,14 +43,16 @@ Lessons from upstream review (Kicksecure/systemcheck#3).
 
 ## mktemp permissions
 
-- `mktemp --directory` creates directories with mode 0700 by default, but this is
-  due to the default umask, not an inherent guarantee from mktemp. Don't remove
-  existing `chmod 700` calls without verifying that the umask is explicitly set in
-  the execution path.
+- `mktemp --directory` creates directories with mode 0700 by default — this is
+  mktemp's internal behavior, not dependent on the process umask.
+- Even so, **keep existing `chmod 700` calls** as defense in depth: if mktemp's
+  behavior ever changes or fails to hold for some reason, the explicit chmod
+  prevents a security hole from opening.
 
 ## Input validation that IS useful
 
 - Validating date strings match `YYYY-MM-DD` before passing to `date --date=` (even
   if the source file is trusted).
 - Validating function names with `declare -F` before executing via `$FUNCTION`.
-- Validating qubes-db output is a valid IPv4 address before embedding in messages.
+- Validating qubes-db output is a valid IPv4 address before processing in any way
+  (not just before embedding in messages).
