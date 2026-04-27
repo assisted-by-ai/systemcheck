@@ -56,3 +56,12 @@ Lessons from upstream review (Kicksecure/systemcheck#3).
 - Validating function names with `declare -F` before executing via `$FUNCTION`.
 - Validating qubes-db output is a valid IPv4 address before processing in any way
   (not just before embedding in messages).
+
+## Always reap child processes in Python
+
+- After `process.kill()`, always call `process.wait()` before exiting. Without
+  `wait()`, the killed child remains as a zombie until its parent exits.
+- In signal handlers that call `sys.exit()`, kill and wait for any subprocess
+  spawned via `Popen` — `sys.exit()` does not automatically clean up children.
+- Prefer `process.communicate()` over `process.wait()` when stdout/stderr pipes
+  are open, to avoid deadlocks from full pipe buffers.
